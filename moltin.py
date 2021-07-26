@@ -11,6 +11,12 @@ EP_ACCESS_TOKEN = None
 EP_TOKEN_LIFETIME = None
 
 
+def get_response(url, params=None, headers=None):
+    response = requests.get(url, params=params, headers=headers)
+    response.raise_for_status()
+    return response
+
+
 def get_ep_access_token(moltin_token):
     now_time = time.time()
     global EP_ACCESS_TOKEN
@@ -29,26 +35,30 @@ def create_ep_access_token(moltin_token):
     }
     response = requests.post('https://api.moltin.com/oauth/access_token',
                              data=data)
+    response.raise_for_status()
     response_info = response.json()
     ep_token_lifetime = response_info['expires']
     ep_access_token = response_info['access_token']
     return ep_access_token, ep_token_lifetime
 
 
-def main():
-    moltin_token = os.getenv('ELASTICPATH_CLIENT_ID')
+def get_all_products(moltin_token):
     access_token = get_ep_access_token(moltin_token)
-
     headers = {
         'Authorization': f'Bearer {access_token}',
     }
-    response = requests.get('https://api.moltin.com/v2/products',
+    response = get_response('https://api.moltin.com/v2/products',
                             headers=headers)
+    return response.json()
 
 
-    print(response.json())
+def main():
+    moltin_token = os.getenv('ELASTICPATH_CLIENT_ID')
+
+    products = get_all_products(moltin_token)
+
     with open('response.json', "w", encoding='utf8') as file:
-        json.dump(response.json(), file, ensure_ascii=False, indent=4)
+        json.dump(products, file, ensure_ascii=False, indent=4)
 
 if __name__ == '__main__':
     main()
