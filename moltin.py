@@ -11,12 +11,6 @@ EP_ACCESS_TOKEN = None
 EP_TOKEN_LIFETIME = None
 
 
-def get_response(url, params=None, headers=None):
-    response = requests.get(url, params=params, headers=headers)
-    response.raise_for_status()
-    return response
-
-
 def get_ep_access_token(moltin_token):
     now_time = time.time()
     global EP_ACCESS_TOKEN
@@ -29,12 +23,12 @@ def get_ep_access_token(moltin_token):
 
 
 def create_ep_access_token(moltin_token):
+    url = 'https://api.moltin.com/oauth/access_token'
     data = {
         'client_id': f'{moltin_token}',
         'grant_type': 'implicit'
     }
-    response = requests.post('https://api.moltin.com/oauth/access_token',
-                             data=data)
+    response = requests.post(url, data=data)
     response.raise_for_status()
     response_info = response.json()
     ep_token_lifetime = response_info['expires']
@@ -47,18 +41,65 @@ def get_all_products(moltin_token):
     headers = {
         'Authorization': f'Bearer {access_token}',
     }
-    response = get_response('https://api.moltin.com/v2/products',
+    response = requests.get('https://api.moltin.com/v2/products',
                             headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+def add_product_to_cart(moltin_token, cart_id):
+    cart_tg_id = f'tg{cart_id}' #<<<<<<<<убрать строку, передать готовый уникальный ID<<<<<<<<<<<<
+    url = f'https://api.moltin.com/v2/carts/{cart_tg_id}/items'
+    access_token = get_ep_access_token(moltin_token)
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json',
+    }
+    data = {"data":
+                 { "sku": "2",
+                   "type": "cart_item",
+                   "quantity": 1}
+             }
+    response = requests.post(url, headers=headers, json=data)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_cart(moltin_token, cart_id):
+    cart_tg_id = f'tg{cart_id}'  # <<<<<<<<убрать строку, передать готовый уникальный ID<<<<<<<<<<<<
+    url = f'https://api.moltin.com/v2/carts/{cart_tg_id}'
+    access_token = get_ep_access_token(moltin_token)
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_cart_items(moltin_token, cart_id):
+    cart_tg_id = f'tg{cart_id}'  # <<<<<<<<убрать строку, передать готовый уникальный ID<<<<<<<<<<<<
+    url = f'https://api.moltin.com/v2/carts/{cart_tg_id}/items'
+    access_token = get_ep_access_token(moltin_token)
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
     return response.json()
 
 
 def main():
     moltin_token = os.getenv('ELASTICPATH_CLIENT_ID')
+    tg_chat_id = os.getenv('TG_CHAT_ID')
 
-    products = get_all_products(moltin_token)
+    # products = get_all_products(moltin_token)
+    add_product = add_product_to_cart(moltin_token, tg_chat_id)
+    cart = get_cart(moltin_token, tg_chat_id)
+    items = get_cart_items(moltin_token, tg_chat_id)
 
     with open('response.json', "w", encoding='utf8') as file:
-        json.dump(products, file, ensure_ascii=False, indent=4)
+        json.dump(items, file, ensure_ascii=False, indent=4)
 
 if __name__ == '__main__':
     main()
