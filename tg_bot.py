@@ -62,8 +62,9 @@ def get_database_connection():
     return _database
 
 
-def error_handler(update, context, tg_chat_id):
-    logger.exception(msg='Exception while handling an update:')
+def error_handler(update, context):
+    logger.exception(msg='Exception while handling an update:',
+                     exc_info=context.error)
 
 
 def main():
@@ -80,7 +81,10 @@ def main():
     dp.add_handler(CallbackQueryHandler(handle_users_reply))
     dp.add_handler(MessageHandler(Filters.text, handle_users_reply))
     dp.add_handler(CommandHandler('start', handle_users_reply))
+    dp.add_error_handler(error_handler)
     updater.start_polling()
+
+    updater.idle()
 
 
 if __name__ == '__main__':
