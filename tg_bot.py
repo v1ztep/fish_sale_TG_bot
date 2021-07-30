@@ -1,5 +1,6 @@
 import logging
 import os
+import textwrap
 
 import redis
 import telegram
@@ -11,9 +12,10 @@ from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
-from moltin import get_all_products
 
 from logs_handler import TelegramLogsHandler
+from moltin import get_all_products
+from moltin import get_product
 
 logger = logging.getLogger('sale_bots logger')
 
@@ -24,7 +26,7 @@ def start(update, context):
     reply_markup = InlineKeyboardMarkup(create_keyboard(context))
 
     update.message.reply_text('Please choose:', reply_markup=reply_markup)
-    return "ECHO"
+    return "HANDLE_MENU"
 
 
 def create_keyboard(context):
@@ -36,12 +38,19 @@ def create_keyboard(context):
     return keyboard
 
 
-
-# def button(update, context):
-#     query = update.callback_query
-#     query.answer() #
-#
-#     query.edit_message_text(text=f"Selected option: {query.data}")
+def get_product_info(update, context):
+    query = update.callback_query
+    product = get_product(context.bot_data['moltin_token'], query.data)['data']
+    text = f'''
+            {product['name']}
+            
+            {product['meta']['display_price']['with_tax']['formatted']} per kg
+            {product['meta']['stock']['level']}kg on stock
+            
+            {product['description']} from deep-deep ocean
+            '''
+    query.edit_message_text(text=textwrap.dedent(text))
+    return "START"
 
 
 def echo(update, context):
@@ -72,7 +81,8 @@ def handle_users_reply(update, context):
 
     states_functions = {
         'START': start,
-        'ECHO': echo
+        'ECHO': echo,
+        'HANDLE_MENU': get_product_info
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
