@@ -15,6 +15,7 @@ from telegram.ext import Updater
 
 from logs_handler import TelegramLogsHandler
 from moltin import get_all_products
+from moltin import get_image
 from moltin import get_product
 
 logger = logging.getLogger('sale_bots logger')
@@ -40,7 +41,14 @@ def create_keyboard(context):
 
 def get_product_info(update, context):
     query = update.callback_query
-    product = get_product(context.bot_data['moltin_token'], query.data)['data']
+    product = get_product(context.bot_data['moltin_token'],
+                          query.data)['data']
+    image_id = product['relationships']['main_image']['data']['id']
+    image = get_image(context.bot_data['moltin_token'],
+                      image_id)
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+
     text = f'''
             {product['name']}
             
@@ -49,7 +57,9 @@ def get_product_info(update, context):
             
             {product['description']} from deep-deep ocean
             '''
-    query.edit_message_text(text=textwrap.dedent(text))
+    context.bot.send_photo(chat_id=chat_id, photo=image,
+                           caption=textwrap.dedent(text))
+    context.bot.delete_message(chat_id=chat_id, message_id=message_id)
     return "START"
 
 
