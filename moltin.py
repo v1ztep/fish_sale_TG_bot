@@ -3,9 +3,9 @@ import os
 import time
 
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
+# from dotenv import load_dotenv
+#
+# load_dotenv()
 
 EP_ACCESS_TOKEN = None
 EP_TOKEN_LIFETIME = None
@@ -93,13 +93,13 @@ def main():
     moltin_token = os.getenv('ELASTICPATH_CLIENT_ID')
     tg_chat_id = os.getenv('TG_CHAT_ID')
 
-    # products = get_all_products(moltin_token)
+    all_products = get_all_products(moltin_token)
     add_product = add_product_to_cart(moltin_token, tg_chat_id)
     cart = get_cart(moltin_token, tg_chat_id)
     items = get_cart_items(moltin_token, tg_chat_id)
 
     with open('response.json', "w", encoding='utf8') as file:
-        json.dump(items, file, ensure_ascii=False, indent=4)
+        json.dump(all_products, file, ensure_ascii=False, indent=4)
 
 if __name__ == '__main__':
     main()
