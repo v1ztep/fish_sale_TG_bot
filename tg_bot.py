@@ -4,6 +4,8 @@ import os
 import redis
 import telegram
 from dotenv import load_dotenv
+from telegram import InlineKeyboardButton
+from telegram import InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -18,8 +20,25 @@ _database = None
 
 
 def start(update, context):
-    update.message.reply_text(text='Привет!')
+    keyboard = [
+        [
+            InlineKeyboardButton("Option 1", callback_data='1'),
+            InlineKeyboardButton("Option 2", callback_data='2'),
+        ],
+        [InlineKeyboardButton("Option 3", callback_data='3')],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    update.message.reply_text('Please choose:', reply_markup=reply_markup)
     return "ECHO"
+
+
+# def button(update, context):
+#     query = update.callback_query
+#     query.answer() #
+#
+#     query.edit_message_text(text=f"Selected option: {query.data}")
 
 
 def echo(update, context):
@@ -31,17 +50,22 @@ def echo(update, context):
 def handle_users_reply(update, context):
     db = get_database_connection()
     if update.message:
+        print('update_message') #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         user_reply = update.message.text
         chat_id = update.message.chat_id
     elif update.callback_query:
+        print('callback_query') #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         user_reply = update.callback_query.data
+        print(user_reply) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         chat_id = update.callback_query.message.chat_id
+        print(chat_id) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     else:
         return
     if user_reply == '/start':
         user_state = 'START'
     else:
         user_state = db.get(chat_id).decode("utf-8")
+        print(user_state) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     states_functions = {
         'START': start,
@@ -49,6 +73,7 @@ def handle_users_reply(update, context):
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
+    print(next_state) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     db.set(chat_id, next_state)
 
 
