@@ -47,6 +47,17 @@ def get_all_products(moltin_token):
     return response.json()
 
 
+def get_product(moltin_token, product_id):
+    access_token = get_ep_access_token(moltin_token)
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+    }
+    response = requests.get(f'https://api.moltin.com/v2/products/{product_id}',
+                            headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 def add_product_to_cart(moltin_token, cart_id):
     cart_tg_id = f'tg{cart_id}' #<<<<<<<<убрать строку, передать готовый уникальный ID<<<<<<<<<<<<
     url = f'https://api.moltin.com/v2/carts/{cart_tg_id}/items'
@@ -97,9 +108,10 @@ def main():
     add_product = add_product_to_cart(moltin_token, tg_chat_id)
     cart = get_cart(moltin_token, tg_chat_id)
     items = get_cart_items(moltin_token, tg_chat_id)
+    get_product_info = get_product(moltin_token, product_id)
 
     with open('response.json', "w", encoding='utf8') as file:
-        json.dump(all_products, file, ensure_ascii=False, indent=4)
+        json.dump(get_product_info, file, ensure_ascii=False, indent=4)
 
 if __name__ == '__main__':
     main()
