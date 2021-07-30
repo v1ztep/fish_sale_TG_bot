@@ -11,6 +11,7 @@ from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
+from moltin import get_all_products
 
 from logs_handler import TelegramLogsHandler
 
@@ -20,18 +21,20 @@ _database = None
 
 
 def start(update, context):
-    keyboard = [
-        [
-            InlineKeyboardButton("Option 1", callback_data='1'),
-            InlineKeyboardButton("Option 2", callback_data='2'),
-        ],
-        [InlineKeyboardButton("Option 3", callback_data='3')],
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = InlineKeyboardMarkup(create_keyboard(context))
 
     update.message.reply_text('Please choose:', reply_markup=reply_markup)
     return "ECHO"
+
+
+def create_keyboard(context):
+    all_products = get_all_products(context.bot_data['moltin_token'])
+    keyboard = []
+    for product in all_products['data']:
+        keyboard.append([InlineKeyboardButton(product['name'],
+                                             callback_data=product['id'])])
+    return keyboard
+
 
 
 # def button(update, context):
@@ -103,6 +106,7 @@ def main():
 
     updater = Updater(tg_token)
     dp = updater.dispatcher
+    dp.bot_data['moltin_token'] = os.getenv('ELASTICPATH_CLIENT_ID')
     dp.add_handler(CallbackQueryHandler(handle_users_reply))
     dp.add_handler(MessageHandler(Filters.text, handle_users_reply))
     dp.add_handler(CommandHandler('start', handle_users_reply))
