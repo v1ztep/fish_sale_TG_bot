@@ -23,24 +23,26 @@ logger = logging.getLogger('sale_bots logger')
 _database = None
 
 
+def get_menu_keyboard(context):
+    all_products = get_all_products(context.bot_data['moltin_token'])
+    keyboard = []
+    for product in all_products['data']:
+        keyboard.append([InlineKeyboardButton(product['name'],
+                                              callback_data=product['id'])])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    return reply_markup
+
+
 def start(update, context):
-    reply_markup = InlineKeyboardMarkup(create_keyboard(context))
+    reply_markup = get_menu_keyboard(context)
 
     update.message.reply_text('Please choose:', reply_markup=reply_markup)
     return "HANDLE_MENU"
 
 
-def create_keyboard(context):
-    all_products = get_all_products(context.bot_data['moltin_token'])
-    keyboard = []
-    for product in all_products['data']:
-        keyboard.append([InlineKeyboardButton(product['name'],
-                                             callback_data=product['id'])])
-    return keyboard
-
-
-def get_product_info(update, context):
+def show_product_info(update, context):
     query = update.callback_query
+    query.answer()
     product = get_product(context.bot_data['moltin_token'],
                           query.data)['data']
     image_id = product['relationships']['main_image']['data']['id']
@@ -57,46 +59,52 @@ def get_product_info(update, context):
             
             {product['description']} from deep-deep ocean
             '''
+    keyboard = [[InlineKeyboardButton("Назад", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     context.bot.send_photo(chat_id=chat_id, photo=image,
-                           caption=textwrap.dedent(text))
+                           caption=textwrap.dedent(text),
+                           reply_markup=reply_markup)
+
     context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-    return "START"
+    return "HANDLE_DESCRIPTION"
 
 
-def echo(update, context):
-    users_reply = update.message.text
-    update.message.reply_text(users_reply)
-    return "ECHO"
+def description_buttons(update, context):
+    query = update.callback_query
+    query.answer()
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+
+    reply_markup = get_menu_keyboard(context)
+    context.bot.send_message(chat_id=chat_id, text='Please choose:',
+                             reply_markup=reply_markup)
+    context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    return "HANDLE_MENU"
 
 
 def handle_users_reply(update, context):
     db = get_database_connection()
     if update.message:
-        print('update_message') #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         user_reply = update.message.text
         chat_id = update.message.chat_id
     elif update.callback_query:
-        print('callback_query') #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         user_reply = update.callback_query.data
-        print(user_reply) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         chat_id = update.callback_query.message.chat_id
-        print(chat_id) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     else:
         return
     if user_reply == '/start':
         user_state = 'START'
     else:
         user_state = db.get(chat_id).decode("utf-8")
-        print(user_state) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     states_functions = {
         'START': start,
-        'ECHO': echo,
-        'HANDLE_MENU': get_product_info
+        'HANDLE_MENU': show_product_info,
+        'HANDLE_DESCRIPTION': description_buttons
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
-    print(next_state) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     db.set(chat_id, next_state)
 
 
