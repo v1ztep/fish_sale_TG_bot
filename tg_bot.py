@@ -14,6 +14,7 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
 from logs_handler import TelegramLogsHandler
+from moltin import add_product_to_cart
 from moltin import get_all_products
 from moltin import get_image
 from moltin import get_product
@@ -33,6 +34,16 @@ def get_menu_keyboard(context):
     return reply_markup
 
 
+def get_description_keyboard(product_id):
+    keyboard = [[InlineKeyboardButton('1 кг', callback_data=f'{product_id} 1'),
+                InlineKeyboardButton('5 кг', callback_data=f'{product_id} 5'),
+                InlineKeyboardButton('10 кг', callback_data=f'{product_id} 10')],
+                [InlineKeyboardButton("Назад", callback_data='to_menu')]
+                ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    return reply_markup
+
+
 def start(update, context):
     reply_markup = get_menu_keyboard(context)
 
@@ -43,11 +54,10 @@ def start(update, context):
 def show_product_info(update, context):
     query = update.callback_query
     query.answer()
-    product = get_product(context.bot_data['moltin_token'],
-                          query.data)['data']
+    product_id = query.data
+    product = get_product(context.bot_data['moltin_token'], product_id)['data']
     image_id = product['relationships']['main_image']['data']['id']
-    image = get_image(context.bot_data['moltin_token'],
-                      image_id)
+    image = get_image(context.bot_data['moltin_token'], image_id)
     chat_id = query.message.chat_id
     message_id = query.message.message_id
 
@@ -59,9 +69,7 @@ def show_product_info(update, context):
             
             {product['description']} from deep-deep ocean
             '''
-    keyboard = [[InlineKeyboardButton("Назад", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
+    reply_markup = get_description_keyboard(product_id)
     context.bot.send_photo(chat_id=chat_id, photo=image,
                            caption=textwrap.dedent(text),
                            reply_markup=reply_markup)
@@ -75,12 +83,19 @@ def description_buttons(update, context):
     query.answer()
     chat_id = query.message.chat_id
     message_id = query.message.message_id
+    if query.data == 'to_menu':
+        reply_markup = get_menu_keyboard(context)
+        context.bot.send_message(chat_id=chat_id, text='Please choose:',
+                                 reply_markup=reply_markup)
+        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        return "HANDLE_MENU"
 
-    reply_markup = get_menu_keyboard(context)
-    context.bot.send_message(chat_id=chat_id, text='Please choose:',
-                             reply_markup=reply_markup)
-    context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-    return "HANDLE_MENU"
+    product_id, quantity = query.data.split()
+    add_product_to_cart(moltin_token=context.bot_data['moltin_token'],
+                        cart_id=chat_id,
+                        product_id=product_id,
+                        quantity=int(quantity))
+    return "HANDLE_DESCRIPTION"
 
 
 def handle_users_reply(update, context):
