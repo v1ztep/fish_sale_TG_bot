@@ -70,18 +70,17 @@ def get_image(moltin_token, image_id):
     return image
 
 
-def add_product_to_cart(moltin_token, cart_id):
-    cart_tg_id = f'tg{cart_id}' #<<<<<<<<убрать строку, передать готовый уникальный ID<<<<<<<<<<<<
-    url = f'https://api.moltin.com/v2/carts/{cart_tg_id}/items'
+def add_product_to_cart(moltin_token, cart_id, product_id, quantity):
+    url = f'https://api.moltin.com/v2/carts/{cart_id}/items'
     access_token = get_ep_access_token(moltin_token)
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json',
     }
     data = {"data":
-                 { "sku": "2",
+                 { "id": product_id,
                    "type": "cart_item",
-                   "quantity": 1}
+                   "quantity": quantity}
              }
     response = requests.post(url, headers=headers, json=data)
     response.raise_for_status()
@@ -116,15 +115,17 @@ def main():
     moltin_token = os.getenv('ELASTICPATH_CLIENT_ID')
     tg_chat_id = os.getenv('TG_CHAT_ID')
 
-    all_products = get_all_products(moltin_token)
-    add_product = add_product_to_cart(moltin_token, tg_chat_id)
-    cart = get_cart(moltin_token, tg_chat_id)
-    items = get_cart_items(moltin_token, tg_chat_id)
-    get_product_info = get_product(moltin_token, )
-    image = get_image(moltin_token, )
+    # all_products = get_all_products(moltin_token)
+    product_id = '9f16f265-9657-4790-a6bc-5146d4f1bf1f'
+    quantity = 5
+    add_product = add_product_to_cart(moltin_token, tg_chat_id, product_id, quantity)
+    # cart = get_cart(moltin_token, tg_chat_id)
+    # items = get_cart_items(moltin_token, tg_chat_id)
+    # get_product_info = get_product(moltin_token, '9f16f265-9657-4790-a6bc-5146d4f1bf1f')
+    # image = get_image(moltin_token, '647e28b3-beed-4813-9699-f3841b2ba118')
 
     with open('response.json', "w", encoding='utf8') as file:
-        json.dump(get_product_info, file, ensure_ascii=False, indent=4)
+        json.dump(add_product, file, ensure_ascii=False, indent=4)
 
 if __name__ == '__main__':
     main()
