@@ -19,6 +19,7 @@ from moltin import get_all_products
 from moltin import get_cart_items
 from moltin import get_image
 from moltin import get_product
+from moltin import remove_item_in_cart
 
 logger = logging.getLogger('sale_bots logger')
 
@@ -54,13 +55,22 @@ def get_description_text(product):
         {product['meta']['display_price']['with_tax']['formatted']} per kg
         {product['meta']['stock']['level']}kg on stock
 
-        {product['description']} from deep-deep ocean
+        {product['description']} fish from deep-deep ocean
         '''
     return text
 
 
-def get_cart_text(context, chat_id):
-    cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
+def get_cart_keyboard(cart_items):
+    keyboard = []
+    for product in cart_items['data']:
+        keyboard.append([InlineKeyboardButton(f"Убрать из корзины {product['name']}",
+                                              callback_data=product['id'])])
+    keyboard.append([InlineKeyboardButton('В меню', callback_data='to_menu')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    return reply_markup
+
+
+def get_cart_text(cart_items):
     text = ''
     for product in cart_items['data']:
         text += f'''
@@ -76,11 +86,19 @@ def get_cart_text(context, chat_id):
     return text
 
 
+def show_menu():
+    pass
+
+
+def show_cart():
+    pass
+
+
 def start(update, context):
     reply_markup = get_menu_keyboard(context)
 
     update.message.reply_text('Please choose:', reply_markup=reply_markup)
-    return "HANDLE_MENU"
+    return 'HANDLE_MENU'
 
 
 def menu_handler(update, context):
@@ -89,10 +107,13 @@ def menu_handler(update, context):
     chat_id = query.message.chat_id
     message_id = query.message.message_id
     if query.data == 'to_cart':
-        cart_text = get_cart_text(context, chat_id)
-        context.bot.send_message(chat_id=chat_id, text=textwrap.dedent(cart_text))
+        cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
+        cart_text = get_cart_text(cart_items)
+        cart_keyboard = get_cart_keyboard(cart_items)
+        context.bot.send_message(chat_id=chat_id, text=textwrap.dedent(cart_text),
+                                 reply_markup=cart_keyboard)
         context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-        return "HANDLE_MENU"
+        return 'HANDLE_CART'
 
     product_id = query.data
     product = get_product(context.bot_data['moltin_token'], product_id)['data']
@@ -100,12 +121,12 @@ def menu_handler(update, context):
     image = get_image(context.bot_data['moltin_token'], image_id)
 
     text = get_description_text(product)
-    reply_markup = get_description_keyboard(product_id)
+    description_keyboard = get_description_keyboard(product_id)
     context.bot.send_photo(chat_id=chat_id, photo=image,
                            caption=textwrap.dedent(text),
-                           reply_markup=reply_markup)
+                           reply_markup=description_keyboard)
     context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-    return "HANDLE_DESCRIPTION"
+    return 'HANDLE_DESCRIPTION'
 
 
 def description_handler(update, context):
@@ -115,23 +136,52 @@ def description_handler(update, context):
     message_id = query.message.message_id
 
     if query.data == 'to_menu':
-        reply_markup = get_menu_keyboard(context)
+        menu_keyboard = get_menu_keyboard(context)
         context.bot.send_message(chat_id=chat_id, text='Please choose:',
-                                 reply_markup=reply_markup)
+                                 reply_markup=menu_keyboard)
         context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-        return "HANDLE_MENU"
+        return 'HANDLE_MENU'
     elif query.data == 'to_cart':
-        cart_text = get_cart_text(context, chat_id)
-        context.bot.send_message(chat_id=chat_id, text=textwrap.dedent(cart_text))
+        cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
+        cart_text = get_cart_text(cart_items)
+        cart_keyboard = get_cart_keyboard(cart_items)
+        context.bot.send_message(chat_id=chat_id,
+                                 text=textwrap.dedent(cart_text),
+                                 reply_markup=cart_keyboard)
         context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-        return "HANDLE_MENU"
+        return 'HANDLE_CART'
 
     product_id, quantity = query.data.split()
     add_product_to_cart(moltin_token=context.bot_data['moltin_token'],
                         cart_id=chat_id,
                         product_id=product_id,
                         quantity=int(quantity))
-    return "HANDLE_DESCRIPTION"
+    return 'HANDLE_DESCRIPTION'
+
+
+def cart_handler(update, context):
+    query = update.callback_query
+    query.answer()
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+
+    if query.data == 'to_menu':
+        menu_keyboard = get_menu_keyboard(context)
+        context.bot.send_message(chat_id=chat_id, text='Please choose:',
+                                 reply_markup=menu_keyboard)
+        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        return 'HANDLE_MENU'
+
+    cart_item_id = query.data
+    remaining_items = remove_item_in_cart(context.bot_data['moltin_token'],
+                                          chat_id, cart_item_id)
+    cart_text = get_cart_text(remaining_items)
+    cart_keyboard = get_cart_keyboard(remaining_items)
+    context.bot.edit_message_text(chat_id=chat_id,
+                                  text=textwrap.dedent(cart_text),
+                                  reply_markup=cart_keyboard,
+                                  message_id=message_id)
+    return 'HANDLE_CART'
 
 
 def handle_users_reply(update, context):
@@ -152,7 +202,8 @@ def handle_users_reply(update, context):
     states_functions = {
         'START': start,
         'HANDLE_MENU': menu_handler,
-        'HANDLE_DESCRIPTION': description_handler
+        'HANDLE_DESCRIPTION': description_handler,
+        'HANDLE_CART': cart_handler
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
