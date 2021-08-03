@@ -109,6 +109,17 @@ def get_cart_items(moltin_token, cart_id):
     return response.json()
 
 
+def remove_item_in_cart(moltin_token, cart_id, cart_item_id):
+    url = f'https://api.moltin.com/v2/carts/{cart_id}/items/{cart_item_id}'
+    access_token = get_ep_access_token(moltin_token)
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+    }
+    response = requests.delete(url, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 def main():
     moltin_token = os.getenv('ELASTICPATH_CLIENT_ID')
     tg_chat_id = os.getenv('TG_CHAT_ID')
@@ -121,9 +132,10 @@ def main():
     # items = get_cart_items(moltin_token, tg_chat_id)
     # get_product_info = get_product(moltin_token, '9f16f265-9657-4790-a6bc-5146d4f1bf1f')
     # image = get_image(moltin_token, '647e28b3-beed-4813-9699-f3841b2ba118')
+    remaining_items = remove_item_in_cart(moltin_token, tg_chat_id, 'fd62373e-9d0c-4e03-9951-35010d5055fc')
 
-    # with open('response.json', "w", encoding='utf8') as file:
-    #     json.dump(cart, file, ensure_ascii=False, indent=4)
+    with open('response_remaining.json', "w", encoding='utf8') as file:
+        json.dump(remaining_items, file, ensure_ascii=False, indent=4)
 
 if __name__ == '__main__':
     main()
