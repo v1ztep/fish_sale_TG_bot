@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import textwrap
 
 import redis
@@ -65,6 +66,9 @@ def get_cart_keyboard(cart_items):
     for product in cart_items['data']:
         keyboard.append([InlineKeyboardButton(f"Убрать из корзины {product['name']}",
                                               callback_data=product['id'])])
+    if keyboard:
+        keyboard.append(
+            [InlineKeyboardButton('Оплата', callback_data='to_payment')])
     keyboard.append([InlineKeyboardButton('В меню', callback_data='to_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     return reply_markup
@@ -163,6 +167,11 @@ def cart_handler(update, context):
     if query.data == 'to_menu':
         show_menu(context, chat_id, message_id)
         return 'HANDLE_MENU'
+    if query.data == 'to_payment':
+        context.bot.edit_message_text(chat_id=chat_id,
+                                      text='Пришлите, пожалуйста, ваш email',
+                                      message_id=message_id)
+        return 'WAITING_EMAIL'
 
     cart_item_id = query.data
     remaining_items = remove_item_in_cart(context.bot_data['moltin_token'],
@@ -176,6 +185,27 @@ def cart_handler(update, context):
     return 'HANDLE_CART'
 
 
+def payment_handler(update, context):
+    validate_email_re = r"[^@]+@[^@]+\.[^@]+"
+    users_reply = update.message.text
+    if not re.fullmatch(validate_email_re, users_reply):
+        text = f'''
+                Кажется вы неправильно ввели почту: {users_reply}
+                Пришлите ещё раз.
+                '''
+        update.message.reply_text(text=textwrap.dedent(text))
+        return 'WAITING_EMAIL'
+    chat_id = update.message.chat_id
+    cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
+    cart_text = get_cart_text(cart_items)
+    text = f'''
+        Мы свяжемся с вами по почте: {users_reply} для подтверждения вашего заказа:
+        {cart_text}
+        '''
+    update.message.reply_text(text=textwrap.dedent(text))
+    return 'START'
+
+
 def handle_users_reply(update, context):
     db = get_database_connection()
     if update.message:
@@ -186,16 +216,18 @@ def handle_users_reply(update, context):
         chat_id = update.callback_query.message.chat_id
     else:
         return
+    user_state = db.get(chat_id).decode("utf-8")
     if user_reply == '/start':
         user_state = 'START'
-    else:
-        user_state = db.get(chat_id).decode("utf-8")
+    elif update.message and user_state != 'WAITING_EMAIL':
+        return
 
     states_functions = {
         'START': start,
         'HANDLE_MENU': menu_handler,
         'HANDLE_DESCRIPTION': description_handler,
-        'HANDLE_CART': cart_handler
+        'HANDLE_CART': cart_handler,
+        'WAITING_EMAIL': payment_handler
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
