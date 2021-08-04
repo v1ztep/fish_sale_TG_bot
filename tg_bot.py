@@ -140,7 +140,6 @@ def menu_handler(update, context):
 
 def description_handler(update, context):
     query = update.callback_query
-    query.answer()
     chat_id = query.message.chat_id
     message_id = query.message.message_id
 
@@ -156,6 +155,7 @@ def description_handler(update, context):
                         cart_id=chat_id,
                         product_id=product_id,
                         quantity=int(quantity))
+    query.answer(text=f'+{quantity}кг добавлены в корзину')
     return 'HANDLE_DESCRIPTION'
 
 
