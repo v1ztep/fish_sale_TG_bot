@@ -16,6 +16,7 @@ from telegram.ext import Updater
 
 from logs_handler import TelegramLogsHandler
 from moltin import add_product_to_cart
+from moltin import create_customer
 from moltin import get_all_products
 from moltin import get_cart_items
 from moltin import get_image
@@ -185,9 +186,10 @@ def cart_handler(update, context):
     return 'HANDLE_CART'
 
 
-def payment_handler(update, context):
+def email_handler(update, context):
     validate_email_re = r"[^@]+@[^@]+\.[^@]+"
     users_reply = update.message.text
+    print(update.message) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     if not re.fullmatch(validate_email_re, users_reply):
         text = f'''
                 Кажется вы неправильно ввели почту: {users_reply}
@@ -199,10 +201,12 @@ def payment_handler(update, context):
     cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
     cart_text = get_cart_text(cart_items)
     text = f'''
-        Мы свяжемся с вами по почте: {users_reply} для подтверждения вашего заказа:
+        Мы свяжемся с вами по почте: {users_reply}, для подтверждения вашего заказа:
         {cart_text}
         '''
     update.message.reply_text(text=textwrap.dedent(text))
+    customer_name = f'{update.message.chat.first_name} {update.message.chat.last_name}'
+    create_customer(context.bot_data['moltin_token'], customer_name, users_reply)
     return 'START'
 
 
@@ -227,7 +231,7 @@ def handle_users_reply(update, context):
         'HANDLE_MENU': menu_handler,
         'HANDLE_DESCRIPTION': description_handler,
         'HANDLE_CART': cart_handler,
-        'WAITING_EMAIL': payment_handler
+        'WAITING_EMAIL': email_handler
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
