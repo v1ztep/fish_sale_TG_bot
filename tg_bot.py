@@ -189,7 +189,6 @@ def cart_handler(update, context):
 def email_handler(update, context):
     validate_email_re = r"[^@]+@[^@]+\.[^@]+"
     users_reply = update.message.text
-    print(update.message) #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     if not re.fullmatch(validate_email_re, users_reply):
         text = f'''
                 Кажется вы неправильно ввели почту: {users_reply}
