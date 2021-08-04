@@ -57,7 +57,7 @@ def get_description_text(product):
 
         {product['description']} fish from deep-deep ocean
         '''
-    return text
+    return textwrap.dedent(text)
 
 
 def get_cart_keyboard(cart_items):
@@ -83,15 +83,24 @@ def get_cart_text(cart_items):
     text += f'''
             Total: {cart_items['meta']['display_price']['with_tax']['formatted']}
             '''
-    return text
+    return textwrap.dedent(text)
 
 
-def show_menu():
-    pass
+def show_menu(context, chat_id, message_id):
+    menu_keyboard = get_menu_keyboard(context)
+    context.bot.send_message(chat_id=chat_id, text='Please choose:',
+                             reply_markup=menu_keyboard)
+    context.bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
-def show_cart():
-    pass
+def show_cart(context, chat_id, message_id):
+    cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
+    cart_text = get_cart_text(cart_items)
+    cart_keyboard = get_cart_keyboard(cart_items)
+    context.bot.send_message(chat_id=chat_id,
+                             text=cart_text,
+                             reply_markup=cart_keyboard)
+    context.bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
 def start(update, context):
@@ -107,12 +116,7 @@ def menu_handler(update, context):
     chat_id = query.message.chat_id
     message_id = query.message.message_id
     if query.data == 'to_cart':
-        cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
-        cart_text = get_cart_text(cart_items)
-        cart_keyboard = get_cart_keyboard(cart_items)
-        context.bot.send_message(chat_id=chat_id, text=textwrap.dedent(cart_text),
-                                 reply_markup=cart_keyboard)
-        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        show_cart(context, chat_id, message_id)
         return 'HANDLE_CART'
 
     product_id = query.data
@@ -120,10 +124,10 @@ def menu_handler(update, context):
     image_id = product['relationships']['main_image']['data']['id']
     image = get_image(context.bot_data['moltin_token'], image_id)
 
-    text = get_description_text(product)
+    description_text = get_description_text(product)
     description_keyboard = get_description_keyboard(product_id)
     context.bot.send_photo(chat_id=chat_id, photo=image,
-                           caption=textwrap.dedent(text),
+                           caption=description_text,
                            reply_markup=description_keyboard)
     context.bot.delete_message(chat_id=chat_id, message_id=message_id)
     return 'HANDLE_DESCRIPTION'
@@ -136,19 +140,10 @@ def description_handler(update, context):
     message_id = query.message.message_id
 
     if query.data == 'to_menu':
-        menu_keyboard = get_menu_keyboard(context)
-        context.bot.send_message(chat_id=chat_id, text='Please choose:',
-                                 reply_markup=menu_keyboard)
-        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        show_menu(context, chat_id, message_id)
         return 'HANDLE_MENU'
     elif query.data == 'to_cart':
-        cart_items = get_cart_items(context.bot_data['moltin_token'], chat_id)
-        cart_text = get_cart_text(cart_items)
-        cart_keyboard = get_cart_keyboard(cart_items)
-        context.bot.send_message(chat_id=chat_id,
-                                 text=textwrap.dedent(cart_text),
-                                 reply_markup=cart_keyboard)
-        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        show_cart(context, chat_id, message_id)
         return 'HANDLE_CART'
 
     product_id, quantity = query.data.split()
@@ -166,10 +161,7 @@ def cart_handler(update, context):
     message_id = query.message.message_id
 
     if query.data == 'to_menu':
-        menu_keyboard = get_menu_keyboard(context)
-        context.bot.send_message(chat_id=chat_id, text='Please choose:',
-                                 reply_markup=menu_keyboard)
-        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        show_menu(context, chat_id, message_id)
         return 'HANDLE_MENU'
 
     cart_item_id = query.data
@@ -178,7 +170,7 @@ def cart_handler(update, context):
     cart_text = get_cart_text(remaining_items)
     cart_keyboard = get_cart_keyboard(remaining_items)
     context.bot.edit_message_text(chat_id=chat_id,
-                                  text=textwrap.dedent(cart_text),
+                                  text=cart_text,
                                   reply_markup=cart_keyboard,
                                   message_id=message_id)
     return 'HANDLE_CART'
