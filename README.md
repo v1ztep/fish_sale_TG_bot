@@ -52,4 +52,4 @@ python tg_bot.py
 
 Вы можете протестировать работу данного бота.
 
-* Напишите в [Telegram @ChGK_OWL_bot](https://telegram.me/ChGK_OWL_bot).
+* Напишите в [Telegram @fish_sale_tgbot](https://telegram.me/fish_sale_tgbot).
