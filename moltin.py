@@ -25,9 +25,9 @@ def create_ep_access_token(moltin_token):
     }
     response = requests.post(url, data=data)
     response.raise_for_status()
-    response_info = response.json()
-    ep_token_lifetime = response_info['expires']
-    ep_access_token = response_info['access_token']
+    response_details = response.json()
+    ep_token_lifetime = response_details['expires']
+    ep_access_token = response_details['access_token']
     return ep_access_token, ep_token_lifetime
 
 
@@ -139,6 +139,5 @@ def get_customer(moltin_token, user_id):
         'Authorization': f'Bearer {access_token}',
     }
     response = requests.get(url, headers=headers)
-    print(response.text)
     response.raise_for_status()
     return response.json()
