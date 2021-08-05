@@ -20,7 +20,7 @@ def get_ep_access_token(moltin_token):
 def create_ep_access_token(moltin_token):
     url = 'https://api.moltin.com/oauth/access_token'
     data = {
-        'client_id': f'{moltin_token}',
+        'client_id': moltin_token,
         'grant_type': 'implicit'
     }
     response = requests.post(url, data=data)
