@@ -11,7 +11,7 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 from validate_email import validate_email
 
-from db_connection import get_database_connection
+from connect_to_redis_db import get_database_connection
 from logs_handler import TelegramLogsHandler
 from moltin import add_product_to_cart
 from moltin import create_customer
@@ -19,11 +19,11 @@ from moltin import get_cart_items
 from moltin import get_image
 from moltin import get_product
 from moltin import remove_item_in_cart
-from sale_bot_contents import get_cart_keyboard
-from sale_bot_contents import get_cart_text
-from sale_bot_contents import get_description_keyboard
-from sale_bot_contents import get_description_text
-from sale_bot_contents import get_menu_keyboard
+from fish_contents import get_cart_keyboard
+from fish_contents import get_cart_text
+from fish_contents import get_description_keyboard
+from fish_contents import get_description_text
+from fish_contents import get_menu_keyboard
 
 logger = logging.getLogger('sale_bots logger')
 
