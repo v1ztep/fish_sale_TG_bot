@@ -1,7 +1,8 @@
 # Чатбот магазин [Telegram](https://telegram.org/) интегрированный с CMS [Moltin](https://www.elasticpath.com/)
 
 Чатбот для [Telegram](https://telegram.org/) с возможностью выбирать, добавлять и
-удалять товар в корзине, оформлять покупку через [CMS Moltin](https://www.elasticpath.com/)
+удалять товар в корзине, оформлять покупку, подгружая информацию из 
+[CMS Moltin](https://www.elasticpath.com/) и дополнять новыми контактами клиентов.
 
 ![gif](media/sale_bot.gif)
 
