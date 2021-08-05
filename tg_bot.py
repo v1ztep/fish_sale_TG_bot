@@ -3,92 +3,29 @@ import os
 import re
 import textwrap
 
-import redis
 import telegram
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton
-from telegram import InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
+from db_connection import get_database_connection
 from logs_handler import TelegramLogsHandler
 from moltin import add_product_to_cart
 from moltin import create_customer
-from moltin import get_all_products
 from moltin import get_cart_items
 from moltin import get_image
 from moltin import get_product
 from moltin import remove_item_in_cart
+from sale_bot_contents import get_cart_keyboard
+from sale_bot_contents import get_cart_text
+from sale_bot_contents import get_description_keyboard
+from sale_bot_contents import get_description_text
+from sale_bot_contents import get_menu_keyboard
 
 logger = logging.getLogger('sale_bots logger')
-
-_database = None
-
-
-def get_menu_keyboard(context):
-    all_products = get_all_products(context.bot_data['moltin_token'])
-    keyboard = []
-    for product in all_products['data']:
-        keyboard.append([InlineKeyboardButton(product['name'],
-                                              callback_data=product['id'])])
-    keyboard.append([InlineKeyboardButton("Корзина", callback_data='to_cart')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    return reply_markup
-
-
-def get_description_keyboard(product_id):
-    keyboard = [[InlineKeyboardButton('1 кг', callback_data=f'{product_id} 1'),
-                InlineKeyboardButton('5 кг', callback_data=f'{product_id} 5'),
-                InlineKeyboardButton('10 кг', callback_data=f'{product_id} 10')],
-                [InlineKeyboardButton("Корзина", callback_data='to_cart')],
-                [InlineKeyboardButton("В меню", callback_data='to_menu')]
-                ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    return reply_markup
-
-
-def get_description_text(product):
-    text = f'''
-        {product['name']}
-
-        {product['meta']['display_price']['with_tax']['formatted']} per kg
-        {product['meta']['stock']['level']}kg on stock
-
-        {product['description']} fish from deep-deep ocean
-        '''
-    return textwrap.dedent(text)
-
-
-def get_cart_keyboard(cart_items):
-    keyboard = []
-    for product in cart_items['data']:
-        keyboard.append([InlineKeyboardButton(f"Убрать из корзины {product['name']}",
-                                              callback_data=product['id'])])
-    if keyboard:
-        keyboard.append(
-            [InlineKeyboardButton('Оплата', callback_data='to_payment')])
-    keyboard.append([InlineKeyboardButton('В меню', callback_data='to_menu')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    return reply_markup
-
-
-def get_cart_text(cart_items):
-    text = ''
-    for product in cart_items['data']:
-        text += f'''
-            {product['name']}
-            {product['description']} fish from deep-deep ocean
-            {product['meta']['display_price']['with_tax']['unit']['formatted']} per kg
-            {product['quantity']}kg in cart for {product['meta']['display_price']
-            ['with_tax']['value']['formatted']} 
-            '''
-    text += f'''
-            Total: {cart_items['meta']['display_price']['with_tax']['formatted']}
-            '''
-    return textwrap.dedent(text)
 
 
 def show_menu(context, chat_id, message_id):
@@ -219,11 +156,12 @@ def handle_users_reply(update, context):
         chat_id = update.callback_query.message.chat_id
     else:
         return
-    user_state = db.get(chat_id).decode("utf-8")
     if user_reply == '/start':
         user_state = 'START'
-    elif update.message and user_state != 'WAITING_EMAIL':
+    elif update.message and db.get(chat_id).decode("utf-8") != 'WAITING_EMAIL':
         return
+    else:
+        user_state = db.get(chat_id).decode("utf-8")
 
     states_functions = {
         'START': start,
@@ -235,16 +173,6 @@ def handle_users_reply(update, context):
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
     db.set(chat_id, next_state)
-
-
-def get_database_connection():
-    global _database
-    if _database is None:
-        redis_password = os.getenv("REDIS_DB_PASS")
-        redis_host, redis_port = os.getenv('REDISLABS_ENDPOINT').split(':')
-        _database = redis.Redis(host=redis_host, port=redis_port,
-                                password=redis_password)
-    return _database
 
 
 def error_handler(update, context):
