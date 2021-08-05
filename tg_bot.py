@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 import textwrap
 
 import telegram
@@ -10,6 +9,7 @@ from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
+from validate_email import validate_email
 
 from db_connection import get_database_connection
 from logs_handler import TelegramLogsHandler
@@ -124,9 +124,9 @@ def cart_handler(update, context):
 
 
 def email_handler(update, context):
-    validate_email_re = r"[^@]+@[^@]+\.[^@]+"
     users_reply = update.message.text
-    if not re.fullmatch(validate_email_re, users_reply):
+    if not validate_email(email_address=users_reply, check_format=True,
+                    check_blacklist=False, check_dns=False, check_smtp=False):
         text = f'''
                 Кажется вы неправильно ввели почту: {users_reply}
                 Пришлите ещё раз.
