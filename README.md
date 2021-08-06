@@ -6,8 +6,6 @@
 
 ![gif](media/sale_bot.gif)
 
-[Наглядная демонстрация с возможностью самому написать боту](#демонстрация)
-
 ## Настройки
 
 * Необходимо зарегистрироваться в [Redislabs](https://redislabs.com/) - забрать 
@@ -47,10 +45,3 @@ pip install -r requirements.txt
 ```
 python tg_bot.py
 ```
-
-
-## Демонстрация
-
-Вы можете протестировать работу данного бота.
-
-* Напишите в [Telegram @fish_sale_tgbot](https://telegram.me/fish_sale_tgbot).
